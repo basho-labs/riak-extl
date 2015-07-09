@@ -121,7 +121,7 @@ defmodule RiakExtl do
   defp print_help() do
     IO.puts "Usage: ./riak-extl --type <bucket-type> [--config <config.json>] [--no-op|--op] [--no-json|--json] <command>"
     IO.puts "\t <bucket-type>\t\tThe bucket type to sync"
-    IO.puts "\t <config.json>\t\tAn alternate config.json file (defaults to riakextl.json)."
+    IO.puts "\t <config.json>\t\tAn alternate config.json file (defaults to riak-extl.json)."
     IO.puts "\t [--no-op|--op]\t\tDisable or enable execution of changing destination clsuter"
     IO.puts "\t [--no-json|--json]\t\tDisable or enable JSON validation. JSON validation will error instead of writing invalid JSON values."
     IO.puts "\t <command>\t\tThe commant to execute. Could be one of:"
@@ -418,7 +418,7 @@ defmodule RiakExtl do
     timestamp = Date.now |> DateFormat.format!("%Y%m%d-%H%M%S", :strftime)
     Logger.add_backend {LoggerFileBackend, :file}
   	Logger.configure_backend {LoggerFileBackend, :file},
-      path: "./riakextl-#{timestamp}.log",
+      path: "./riak-extl-#{timestamp}.log",
       level: :debug
     Logger.configure_backend :console, [ level: :info ]
   end
