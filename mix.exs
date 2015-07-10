@@ -8,7 +8,9 @@ defmodule RiakExtl.Mixfile do
      escript: [main_module: RiakExtl, name: "riak-extl"],
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     deps: deps]
+     deps: deps,
+     test_coverage: [tool: ExCoveralls]
+    ]
   end
 
   def application do
@@ -17,13 +19,13 @@ defmodule RiakExtl.Mixfile do
 
   defp deps do
     [
-      {:riak, github: "drewkerrigan/riak-elixir-client"},
+      {:riak, github: "glickbot/riak-elixir-client"},
       {:timex, "~> 0.15.0"},
       {:logger_file_backend, "~> 0.0.3"},
       {:json, "~> 0.3.0"},
       {:meck, github: "eproxus/meck", tag: "0.8.2", override: true},
-      {:riak_pb, github: "basho/riak_pb", override: true, tag: "2.0.0.16", compile: "./rebar get-deps compile deps_dir=../"},
-      {:riakc, github: "basho/riak-erlang-client", tag: "2.0.1"}
+      {:mock, "~> 0.1.1"},
+      {:excoveralls, "~> 0.3", only: :test}
     ]
   end
 end

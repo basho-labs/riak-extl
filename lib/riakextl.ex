@@ -67,9 +67,8 @@ defmodule RiakExtl do
             IO.puts "--type required for list_src_buckets"
             print_help()
           _ ->
-            print_buckets(:src,
-              String.to_atom(config["src_ip"]),
-              config["src_port"])
+            start_riak(:src, String.to_atom(config["src_ip"]), config["src_port"])
+            print_buckets(:src)
         end
       "list_dest_buckets" ->
         case config(:type) do
@@ -77,9 +76,8 @@ defmodule RiakExtl do
             IO.puts "--type required for list_dest_buckets"
             print_help()
           _ ->
-            print_buckets(:dest,
-              String.to_atom(config["dest_ip"]),
-              config["dest_port"])
+            start_riak(:dest, String.to_atom(config["dest_ip"]), config["dest_port"])
+            print_buckets(:dest)
         end
       "help" ->
         print_help()
@@ -89,24 +87,24 @@ defmodule RiakExtl do
     end
   end
 
-  defp load_file(file) do
+  def load_file(file) do
     case File.regular?(file) do
       true -> JSON.decode!(File.read!(file))
       false -> %{}
     end
   end
 
-  defp parse_args(args) do
+  def parse_args(args) do
     OptionParser.parse( args,
       strict: [type: :string, op: :boolean, json: :boolean],
       switches: [config: :string]
     )
   end
 
-  defp set_config({_options, [], _errors}) do
+  def set_config({_options, [], _errors}) do
     ["help"]
   end
-  defp set_config({options, command, []}) do
+  def set_config({options, command, []}) do
     Enum.each([:op, :json, :type], fn attr ->
       if Dict.has_key?(options, attr) do
         config(attr, options[attr])
@@ -114,11 +112,11 @@ defmodule RiakExtl do
     end)
     command
   end
-  defp set_config({_options,_command,_errors}) do
+  def set_config({_options,_command,_errors}) do
     ["help"]
   end
 
-  defp print_help() do
+  def print_help() do
     IO.puts "Usage: ./riak-extl --type <bucket-type> [--config <config.json>] [--no-op|--op] [--no-json|--json] <command>"
     IO.puts "\t <bucket-type>\t\tThe bucket type to sync"
     IO.puts "\t <config.json>\t\tAn alternate config.json file (defaults to riak-extl.json)."
@@ -135,7 +133,7 @@ defmodule RiakExtl do
 ####################
 # Migrate Type Functions
 
-  defp migrate_type do
+  def migrate_type do
     Logger.debug "Retrieving bucket list from source"
     src_buckets = get_buckets!(:src, config :type)
     Logger.debug "Retrieving bucket list from destination"
@@ -146,7 +144,7 @@ defmodule RiakExtl do
     end)
   end
 
-  defp migrate_bucket(type, bucket, check_keys) do
+  def migrate_bucket(type, bucket, check_keys) do
     bucket_start = Date.now
     Logger.info "Migrating #{type}/#{bucket}"
     src_keys = get_keys!(:src, type, bucket)
@@ -164,7 +162,7 @@ defmodule RiakExtl do
     Logger.info("Bucket sync in: #{Date.diff(bucket_start,bucket_end, :secs)} secs")
   end
 
-  defp migrate_key(type, bucket, key, has_key) do
+  def migrate_key(type, bucket, key, has_key) do
     src_o = get_obj!(:src, type, bucket, key)
     try do
       { action, obj } = case is_map(src_o) do
@@ -211,7 +209,7 @@ defmodule RiakExtl do
     end
   end
 
-  defp needs_update(src, dest) do
+  def needs_update(src, dest) do
     cond do
       is_nil(src) and is_nil(dest) ->
         false
@@ -231,11 +229,10 @@ defmodule RiakExtl do
 ######################
 # Migrate Search functions
 
-  defp migrate_type_create_indexes do
+  def migrate_type_create_indexes do
     Logger.debug "Retrieving bucket list from source"
     src_buckets = get_buckets!(:src, config :type)
     Logger.debug "Retrieving bucket list from destination"
-    #dest_buckets = get_buckets!(:dest, options[:type])
     type = config :type
     queue = Enum.map(src_buckets, fn(b) ->
       migrate_bucket_create_indexes(type, b)
@@ -245,8 +242,8 @@ defmodule RiakExtl do
 
   end
 
-  defp bucket_configure(nil), do: nil
-  defp bucket_configure({t,b,p}) do
+  def bucket_configure(nil), do: nil
+  def bucket_configure({t,b,p}) do
     if config :op do
       case Riak.Bucket.put(riak_pid(:dest), {t,b}, p) do
         :ok -> Logger.info "BUCKET\tSUCCESS\tApplied configuration to #{b}"
@@ -260,7 +257,7 @@ defmodule RiakExtl do
     end
   end
 
-  defp migrate_bucket_create_indexes(type, bucket) do
+  def migrate_bucket_create_indexes(type, bucket) do
     bucket_start = Date.now
     Logger.debug "Migrating Search for #{type}/#{bucket}"
 
@@ -294,30 +291,30 @@ defmodule RiakExtl do
 
   end
 
-  defp get_props!(t,b) do
+  def get_props!(t,b) do
     { :ok, props } = Riak.Bucket.get(riak_pid(:src), {t,b})
     { t, b, props }
   end
 
-  defp get_idx_name({t, b, props}), do: {t, b, props[:search_index]}
+  def get_idx_name({t, b, props}), do: {t, b, props[:search_index]}
 
-  defp get_index({_t, _b, nil}),  do: nil
-  defp get_index({t, b, idx_name}) do
+  def get_index({_t, _b, nil}),  do: nil
+  def get_index({t, b, idx_name}) do
     { :ok, idx } = Riak.Search.Index.get(riak_pid(:src), idx_name)
     {t, b, idx, idx[:schema] }
   end
 
-  defp get_schema(nil), do: nil
-  defp get_schema({_t, _b, _idx, nil}), do: nil
-  defp get_schema({t, b, idx, schema}) do
+  def get_schema(nil), do: nil
+  def get_schema({_t, _b, _idx, nil}), do: nil
+  def get_schema({t, b, idx, schema}) do
     { :ok, [name: schema, content: schema_xml] }
       = Riak.Search.Schema.get(riak_pid(:src), schema)
     {t, b, idx, schema, schema_xml}
   end
 
-  defp create_schema(nil), do: nil
-  defp create_schema({_t, _b, _idx, _schema, nil}), do: nil
-  defp create_schema({t, b, idx, schema, schema_xml}) do
+  def create_schema(nil), do: nil
+  def create_schema({_t, _b, _idx, _schema, nil}), do: nil
+  def create_schema({t, b, idx, schema, schema_xml}) do
     case Riak.Search.Schema.get(riak_pid(:dest), schema) do
       { :ok, dest_schema } ->
         if ( cond do
@@ -343,8 +340,8 @@ defmodule RiakExtl do
     end
   end
 
-  defp create_index(nil), do: nil
-  defp create_index({t, b, idx, schema}) do
+  def create_index(nil), do: nil
+  def create_index({t, b, idx, schema}) do
     { :ok, props } = Riak.Bucket.get(riak_pid(:dest), {t,b})
     case Riak.Search.Index.get(riak_pid(:dest), idx[:index]) do
       {:ok, dest_idx} ->
@@ -370,17 +367,17 @@ defmodule RiakExtl do
     end
   end
 
-  defp riak_index_create(pid, idx, schema, props) do
+  def riak_index_create(pid, idx, schema, props) do
     if config :op do
       Logger.info "INDEX\tCREATE\tCreating Index: #{idx[:index]}"
-      :riakc_pb_socket.create_search_index(pid, idx[:index], schema, props)
+      Riak.Search.Index.put(pid, idx[:index], schema, props)
     else
       Logger.info "INDEX\tCREATE[NOOP]\tWould have created Index: #{idx[:index]}"
     end
   end
 
-  defp queue_configure_bucket(nil), do: nil
-  defp queue_configure_bucket({_t, _b, idx, props}) do
+  def queue_configure_bucket(nil), do: nil
+  def queue_configure_bucket({_t, _b, idx, props}) do
     cond do
       !Keyword.has_key?(props, :search_index) ->
         Logger.info "BUCKET\tQUEUE\tQueueing bucket configuration"
@@ -395,26 +392,25 @@ defmodule RiakExtl do
     end
   end
 
-  defp print_buckets(target, ip, port) when is_atom(target) do
-    start_riak :src, ip, port
-    buckets = Riak.Bucket.Type.list!(riak_pid(:src), config :type )
+  def print_buckets(target) when is_atom(target) do
+    buckets = get_buckets!(target, config :type )
     Enum.each(buckets, fn(b) -> Logger.info "Bucket: #{b}" end)
   end
 
-  defp init_config do
+  def init_config do
     {:ok, agent} = Agent.start_link fn -> %{} end
     Process.register(agent, :config)
   end
 
-  defp config(attr, val) do
+  def config(attr, val) do
     Agent.update(Process.whereis(:config), fn map -> Map.put(map, attr, val) end)
   end
 
-  defp config(attr) do
+  def config(attr) do
     Agent.get(Process.whereis(:config), fn map -> Map.get map, attr end)
   end
 
-  defp configure_logger do
+  def configure_logger do
     timestamp = Date.now |> DateFormat.format!("%Y%m%d-%H%M%S", :strftime)
     Logger.add_backend {LoggerFileBackend, :file}
   	Logger.configure_backend {LoggerFileBackend, :file},
@@ -423,7 +419,7 @@ defmodule RiakExtl do
     Logger.configure_backend :console, [ level: :info ]
   end
 
-  defp put_schema(pid, schema, schema_xml) do
+  def put_schema(pid, schema, schema_xml) do
     if config :op do
       Logger.info "SCHEMA\tCREATE\tCreating Schema: #{schema}"
       Riak.Search.Schema.create(pid, schema, schema_xml)
@@ -432,15 +428,15 @@ defmodule RiakExtl do
     end
   end
 
-  defp get_obj!( target, type, bucket, key ) when is_atom(target) do
+  def get_obj!( target, type, bucket, key ) when is_atom(target) do
     Riak.find(riak_pid(target), { type, bucket }, key)
   end
 
-  defp put_obj!( target, obj ) do
+  def put_obj!( target, obj ) do
     put_obj!(target, obj, config(:op), config(:json))
   end
 
-  defp put_obj!( target, obj, op, true ) when is_atom(target) do
+  def put_obj!( target, obj, op, true ) when is_atom(target) do
     case JSON.decode(obj.data) do
       {:ok, _ } -> :ok
         put_obj!( target, obj, op, false )
@@ -448,21 +444,19 @@ defmodule RiakExtl do
         Logger.warn "PUT ERROR\tInvalid JSON: Unexpected End of Buffer for key #{obj.key}"
       {:error, {:unexpected_token, token }} ->
         Logger.warn "PUT ERROR\tInvalid JSON: Unexpected Token: #{token} for key #{obj.key}"
-      _ ->
-        Logger.warn "PUT ERROR\tInvalid JSON: Unknown Error for key #{obj.key}"
     end
   end
 
-  defp put_obj!( target, obj, false, false ) when is_atom(target) do
+  def put_obj!( target, obj, false, false ) when is_atom(target) do
     Logger.debug "NOOP [PUT]:\t #{obj.key}"
   end
 
-  defp put_obj!( target, obj, true, false ) when is_atom(target) do
+  def put_obj!( target, obj, true, false ) when is_atom(target) do
     Logger.debug "PUT:\t #{obj.key}"
     Riak.put(riak_pid(target), obj)
   end
 
-  defp del_obj!( target, obj ) when is_atom(target) do
+  def del_obj!( target, obj ) when is_atom(target) do
     case config :op do
       false ->
         Logger.debug "NOOP [DEL]:\t #{obj.key}"
@@ -472,20 +466,20 @@ defmodule RiakExtl do
     end
   end
 
-  defp get_keys!( target, type, bucket ) when is_atom(target) do
+  def get_keys!( target, type, bucket ) when is_atom(target) do
     Logger.debug "Retrieving list of keys from #{type}/#{bucket} on #{to_string(target)}"
     Riak.Bucket.keys!(riak_pid(target), {type, bucket})
   end
 
-  defp get_buckets!( target, type ) when is_atom (target) do
+  def get_buckets!( target, type ) when is_atom (target) do
     Riak.Bucket.Type.list!(riak_pid(target), type)
   end
 
-  defp riak_ping( target ) when is_atom (target) do
+  def riak_ping( target ) when is_atom (target) do
     Riak.ping(riak_pid(target))
   end
 
-  defp start_riak( target, ip, port ) when is_atom(target) do
+  def start_riak( target, ip, port ) when is_atom(target) do
     Logger.debug "Connecting to Riak [#{to_string(target)}]"
     { :ok, riak } = Riak.Connection.start(ip, port)
     Process.register(riak, target)
@@ -493,14 +487,14 @@ defmodule RiakExtl do
     :ok
   end
 
-  defp riak_pid(target) when is_atom (target) do
+  def riak_pid(target) when is_atom (target) do
     pid = Process.whereis(target)
     cond do
       is_nil pid ->
-        Process.exit self(), "Riak Connection to #{to_string target} Broken"
+        raise "Riak Connection to #{to_string target} Broken"
         :nil
       !Process.alive? pid ->
-        Process.exit self(), "Riak Connection to #{to_string target} Broken"
+        raise "Riak Connection to #{to_string target} Broken"
         :nil
       true ->
         pid
