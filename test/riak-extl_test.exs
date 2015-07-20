@@ -13,20 +13,20 @@ defmodule RiakExtlTest do
   test_with_mock "start/register/ping riak", Riak.Connection, [start: fn( _ip, _port ) ->
       Agent.start_link fn -> [] end
     end ] do
-    assert :ok = RiakExtl.start_riak(:start_test, "127.0.0.1", 8087), "Riak Started"
+    assert :ok = RiakExtl.Store.start_riak(:start_test, "127.0.0.1", 8087), "Riak Started"
     assert is_pid(Process.whereis(:start_test))
-    assert is_pid(RiakExtl.riak_pid(:start_test))
+    assert is_pid(RiakExtl.Store.riak_pid(:start_test))
     assert_raise RuntimeError, fn ->
-      RiakExtl.riak_pid(:unknown)
+      RiakExtl.Store.riak_pid(:unknown)
     end
     assert_raise RuntimeError, fn ->
       pid = spawn fn -> Process.register(self(), :test) end
       with_mock Process, [whereis: fn(_name) -> pid end, alive?: fn(_pid) -> false end ] do
-        refute pid == RiakExtl.riak_pid(:test)
+        refute pid == RiakExtl.Store.riak_pid(:test)
       end
     end
     with_mock Riak, [ping: fn(_pid) -> :pong end] do
-      assert :pong = RiakExtl.riak_ping(:start_test)
+      assert :pong = RiakExtl.Store.riak_ping(:start_test)
     end
 
 
@@ -119,54 +119,54 @@ defmodule RiakExtlTest do
                 #Process.unregister(:sink)
                 #Process.unregister(:config)
 
-                assert :ok = RiakExtl.config(:test, "value")
-                assert "value" = RiakExtl.config :test
+                assert :ok = RiakExtl.Config.config(:test, "value")
+                assert "value" = RiakExtl.Config.config :test
 
-                RiakExtl.config(:type, "foo")
-                RiakExtl.config(:test_same, true)
+                RiakExtl.Config.config(:type, "foo")
+                RiakExtl.Config.config(:test_same, true)
 
-                buckets = RiakExtl.get_buckets!(:src, "foo")
+                buckets = RiakExtl.Store.get_buckets!(:src, "foo")
                 assert buckets = ["foo_bucket_1", "foo_bucket_2", "foo_bucket_3"]
 
                 assert :ok = RiakExtl.print_buckets(:src)
 
-                keys = RiakExtl.get_keys!(:src,"foo","foo_bucket_1")
+                keys = RiakExtl.Store.get_keys!(:src,"foo","foo_bucket_1")
                 assert keys = ["fookey1", "fookey2", "fookey3"]
 
-                obj = RiakExtl.get_obj!(:src,"foo","foo_bucket_1","fookey1")
+                obj = RiakExtl.Store.get_obj!(:src,"foo","foo_bucket_1","fookey1")
                 assert obj == Riak.Object.create(bucket: "foo_bucket_1", type: "foo", key: "fookey1", data: "{}")
 
 
-                RiakExtl.config(:op, false)
-                RiakExtl.config(:json, false)
-                assert :ok = RiakExtl.put_obj!(:src, obj)
-                assert :ok = RiakExtl.del_obj!(:src, obj)
+                RiakExtl.Config.config(:op, false)
+                RiakExtl.Config.config(:json, false)
+                assert :ok = RiakExtl.Store.put_obj!(:src, obj)
+                assert :ok = RiakExtl.Store.del_obj!(:src, obj)
 
                 assert {:src, "foo", [], "foo_schema_1", "<xml></xml>"} = RiakExtl.get_schema({:src,"foo",[],"foo_schema_1"})
-                assert :ok = RiakExtl.put_schema(:src, "foo_schema_1", "<xml></xml>")
+                assert :ok = RiakExtl.Store.put_schema(:src, "foo_schema_1", "<xml></xml>")
 
                 assert :ok = RiakExtl.migrate_type
                 assert :ok = RiakExtl.migrate_type_create_indexes
 
-                RiakExtl.config(:op, true)
-                assert :ok = RiakExtl.put_obj!(:src, obj)
-                assert :ok = RiakExtl.del_obj!(:src, obj)
+                RiakExtl.Config.config(:op, true)
+                assert :ok = RiakExtl.Store.put_obj!(:src, obj)
+                assert :ok = RiakExtl.Store.del_obj!(:src, obj)
 
-                RiakExtl.config(:json, true)
-                assert :ok = RiakExtl.put_obj!(:src, obj)
+                RiakExtl.Config.config(:json, true)
+                assert :ok = RiakExtl.Store.put_obj!(:src, obj)
                 # should fail to put, should test to be sure of this
                 obj = %{obj | data: ""}
-                assert :ok = RiakExtl.put_obj!(:src, obj)
+                assert :ok = RiakExtl.Store.put_obj!(:src, obj)
                 # should fail to put, should test to be sure of this
                 obj = %{obj | data: "]"}
-                assert :ok = RiakExtl.put_obj!(:src, obj)
+                assert :ok = RiakExtl.Store.put_obj!(:src, obj)
 
-                assert :ok = RiakExtl.put_schema(:src, "foo_schema_1", "<xml></xml>")
+                assert :ok = RiakExtl.Store.put_schema(:src, "foo_schema_1", "<xml></xml>")
 
                 assert :ok = RiakExtl.migrate_type
                 assert :ok = RiakExtl.migrate_type_create_indexes
 
-                RiakExtl.config(:test_same, false)
+                RiakExtl.Config.config(:test_same, false)
                 assert :ok = RiakExtl.migrate_type
                 assert :ok = RiakExtl.migrate_type_create_indexes
 
