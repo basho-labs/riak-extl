@@ -19,7 +19,7 @@ defmodule RiakExtl.Mixfile do
 
   defp deps do
     [
-      {:riak, github: "glickbot/riak-elixir-client"},
+      {:riak, github: "basho-labs/riak-elixir-client"},
       {:timex, "~> 0.15.0"},
       {:logger_file_backend, "~> 0.0.3"},
       {:json, "~> 0.3.0"},
