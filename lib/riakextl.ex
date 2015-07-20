@@ -302,7 +302,7 @@ defmodule RiakExtl do
 
   def get_index({_t, _b, nil}),  do: nil
   def get_index({t, b, idx_name}) do
-    { :ok, idx } = get_index(:src, idx_name)
+    { :ok, idx } = riak_get_index(:src, idx_name)
     {t, b, idx, idx[:schema] }
   end
 
@@ -332,7 +332,7 @@ defmodule RiakExtl do
           {t, b, idx, schema}
         end
       { :error, "notfound" } ->
-        put_schema(riak_pid(:sink), schema, schema_xml)
+        put_schema(:sink, schema, schema_xml)
         {t, b, idx, schema}
       Error ->
         IO.puts "Unhandled response"
@@ -359,7 +359,7 @@ defmodule RiakExtl do
             nil
         end
       {:error, "notfound"} ->
-        riak_index_create(riak_pid(:sink), idx, schema, [n_val: props[:n_val]])
+        riak_index_create(:sink, idx, schema, [n_val: props[:n_val]])
         {t, b, idx, props}
       Error ->
         IO.puts "Unhandled response"

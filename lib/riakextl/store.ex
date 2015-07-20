@@ -2,6 +2,28 @@ defmodule RiakExtl.Store do
   require Logger
   import RiakExtl.Config
 
+  def start_riak( target, ip, port ) when is_atom(target) do
+    Logger.debug "Connecting to Riak [#{to_string(target)}]"
+    { :ok, riak } = Riak.Connection.start(ip, port)
+    Process.register(riak, target)
+    Logger.debug "Connection successful"
+    :ok
+  end
+
+  def riak_pid(target) when is_atom (target) do
+    pid = Process.whereis(target)
+    cond do
+      is_nil pid ->
+        raise "Riak Connection to #{to_string target} Broken"
+        :nil
+      !Process.alive? pid ->
+        raise "Riak Connection to #{to_string target} Broken"
+        :nil
+      true ->
+        pid
+    end
+  end
+
   def get_obj!( target, type, bucket, key ) when is_atom(target) do
     Riak.find(riak_pid(target), { type, bucket }, key)
   end
@@ -61,28 +83,8 @@ defmodule RiakExtl.Store do
     Riak.ping(riak_pid(target))
   end
 
-  def start_riak( target, ip, port ) when is_atom(target) do
-    Logger.debug "Connecting to Riak [#{to_string(target)}]"
-    { :ok, riak } = Riak.Connection.start(ip, port)
-    Process.register(riak, target)
-    Logger.debug "Connection successful"
-    :ok
-  end
 
-  def riak_pid(target) when is_atom (target) do
-    pid = Process.whereis(target)
-    cond do
-      is_nil pid ->
-        raise "Riak Connection to #{to_string target} Broken"
-        :nil
-      !Process.alive? pid ->
-        raise "Riak Connection to #{to_string target} Broken"
-        :nil
-      true ->
-        pid
-    end
-  end
-  def get_index(target, index) do
+  def riak_get_index(target, index) do
     Riak.Search.Index.get(riak_pid(target), index)
   end
 
