@@ -85,18 +85,20 @@ defmodule RiakExtl.Store do
   def get_index(target, index) do
     Riak.Search.Index.get(riak_pid(target), index)
   end
-  def put_schema(pid, schema, schema_xml) do
+
+  def put_schema(target, schema, schema_xml) do
     if config :op do
       Logger.info "SCHEMA\tCREATE\tCreating Schema: #{schema}"
-      Riak.Search.Schema.create(pid, schema, schema_xml)
+      Riak.Search.Schema.create(riak_pid(pid), schema, schema_xml)
     else
       Logger.info "SCHEMA\tCREATE[NOOP]\tWould have created schema: #{schema}"
     end
   end
-  def riak_index_create(pid, idx, schema, props) do
+
+  def riak_index_create(target, idx, schema, props) do
     if config :op do
       Logger.info "INDEX\tCREATE\tCreating Index: #{idx[:index]}"
-      Riak.Search.Index.put(pid, idx[:index], schema, props)
+      Riak.Search.Index.put(riak_pid(target), idx[:index], schema, props)
     else
       Logger.info "INDEX\tCREATE[NOOP]\tWould have created Index: #{idx[:index]}"
     end
