@@ -11,11 +11,11 @@ Usage: ./riak-extl --type <bucket-type> [--config <config.json>] [--no-op|--op] 
          <config.json>          An alternate config.json file (defaults to riakextl.json).
          [--no-op|--op]         Disable or enable execution of changing destination clsuter
          [--no-json|--json]             Disable or enable JSON validation. JSON validation will error instead of writing invalid JSON values.
-         <command>              The commant to execute. Could be one of:
+         <command>              The command to execute. Could be one of:
                 ping            Test connectivity
                 list_src_buckets        List all buckets in <bucket-type> of source cluster.
-                list_dest_buckets       List all buckets in <bucket-type> of destination cluster.
-                sync            Perform actual syncronization of buckets types from Source cluster to Destination/Target cluster
+                list_sink_buckets       List all buckets in <bucket-type> of sink cluster.
+                sync            Perform actual synchronization of buckets types from Source cluster to sink cluster
                 create_indexes          Migrate Schemas, Indexes and Bucket configurations within <bucket-type>.
 ```
 

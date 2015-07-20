@@ -90,7 +90,7 @@ defmodule RiakExtlTest do
 
                 assert :ok = RiakExtl.main(["ping"])
                 Process.unregister(:src)
-                Process.unregister(:dest)
+                Process.unregister(:sink)
                 Process.unregister(:config)
 
                 assert :ok = RiakExtl.main(["sync","--op","--json"])
@@ -98,7 +98,7 @@ defmodule RiakExtlTest do
 
                 assert :ok = RiakExtl.main(["--type","foo","sync","--op","--json"])
                 Process.unregister(:src)
-                Process.unregister(:dest)
+                Process.unregister(:sink)
                 Process.unregister(:config)
 
 
@@ -106,17 +106,17 @@ defmodule RiakExtlTest do
                 Process.unregister(:config)
                 assert :ok = RiakExtl.main(["--type","foo","create_indexes","--op","--json"])
                 Process.unregister(:src)
-                Process.unregister(:dest)
+                Process.unregister(:sink)
                 Process.unregister(:config)
                 assert :ok = RiakExtl.main(["list_src_buckets","--op","--json"])
                 Process.unregister(:config)
-                assert :ok = RiakExtl.main(["list_dest_buckets","--op","--json"])
+                assert :ok = RiakExtl.main(["list_sink_buckets","--op","--json"])
                 Process.unregister(:config)
                 assert :ok = RiakExtl.main(["--type","foo","list_src_buckets","--op","--json"])
                 #Process.unregister(:src)
                 Process.unregister(:config)
-                assert :ok = RiakExtl.main(["--type","foo","list_dest_buckets","--op","--json"])
-                #Process.unregister(:dest)
+                assert :ok = RiakExtl.main(["--type","foo","list_sink_buckets","--op","--json"])
+                #Process.unregister(:sink)
                 #Process.unregister(:config)
 
                 assert :ok = RiakExtl.config(:test, "value")
