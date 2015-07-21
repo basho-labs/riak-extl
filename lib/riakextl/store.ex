@@ -1,12 +1,25 @@
 defmodule RiakExtl.Store do
+  use GenServer
+
   require Logger
   import RiakExtl.Config
 
-  def start_riak( target, ip, port ) when is_atom(target) do
-    Logger.debug "Connecting to Riak [#{to_string(target)}]"
-    { :ok, riak } = Riak.Connection.start(ip, port)
-    Process.register(riak, target)
+  def init({:riak, target, {ip, port}}) do
+    Process.register(self(), target)
+    {:ok, pid} = Riak.Connection.start_link(ip, port)
     Logger.debug "Connection successful"
+    {:ok, %{type: :riak, pid: pid, id: target}}
+  end
+
+  def init({:file, target, {_filename}}) do
+    Process.register(self(), target)
+    Logger.debug "File Connection Opened"
+    {:ok, %{type: :file, pid: self()}}
+  end
+
+  def start_riak( target, ip, port ) when is_atom(target) do
+    Logger.debug "Starting Store Server [#{to_string(target)}]"
+    GenServer.start_link(__MODULE__, {:riak, target, {ip, port}})
     :ok
   end
 
@@ -24,8 +37,20 @@ defmodule RiakExtl.Store do
     end
   end
 
+  def handle_call({:storeop, {fun, args}}, _from, state) do
+    Logger.debug("Storeop called")
+    res = apply(fun,[state[:pid]|args])
+    {:reply, res, state}
+  end
+
+  def handle_call(unknown, _from, state) do
+    IO.puts("Unknown call!")
+    IO.inputs(unknown)
+    {:reply, :ok, state}
+  end
+
   def get_obj!( target, type, bucket, key ) when is_atom(target) do
-    Riak.find(riak_pid(target), { type, bucket }, key)
+    GenServer.call(riak_pid(target), {:storeop, {&Riak.find/3,[ { type, bucket }, key]}})
   end
 
   def put_obj!( target, obj ) do
@@ -49,7 +74,7 @@ defmodule RiakExtl.Store do
 
   def put_obj!( target, obj, true, false ) when is_atom(target) do
     Logger.debug "PUT:\t #{obj.key}"
-    Riak.put(riak_pid(target), obj)
+    GenServer.call(riak_pid(target), {:storeop, {&Riak.put/2, [obj]}})
   end
 
   def del_obj!( target, obj ) when is_atom(target) do
@@ -58,40 +83,40 @@ defmodule RiakExtl.Store do
         Logger.debug "NOOP [DEL]:\t #{obj.key}"
       true ->
         Logger.debug "DEL:\t #{obj.key}"
-        Riak.delete(riak_pid(target), obj)
+        GenServer.call(riak_pid(target), {:storeop, {&Riak.delete/2, [obj]}})
     end
   end
 
   def get_keys!( target, type, bucket ) when is_atom(target) do
     Logger.debug "Retrieving list of keys from #{type}/#{bucket} on #{to_string(target)}"
-    Riak.Bucket.keys!(riak_pid(target), {type, bucket})
+    GenServer.call(riak_pid(target), {:storeop, {&Riak.Bucket.keys!/2, [{type, bucket}]}})
   end
 
   def get_buckets!( target, type ) when is_atom (target) do
-    Riak.Bucket.Type.list!(riak_pid(target), type)
+    GenServer.call(riak_pid(target), {:storeop, {&Riak.Bucket.Type.list!/2,[type]}})
   end
 
   def get_bucket( target, namespace ) do
-    Riak.Bucket.get(riak_pid(target), namespace)
+    GenServer.call(riak_pid(target), {:storeop, {&Riak.Bucket.get/2, [namespace]}})
   end
 
   def put_bucket( target, namespace, p ) do
-    Riak.Bucket.put(riak_pid(target), namespace, p)
+    GenServer.call(riak_pid(target), {:storeop, {&Riak.Bucket.put/3, [namespace, p]}})
   end
 
   def riak_ping( target ) when is_atom (target) do
-    Riak.ping(riak_pid(target))
+    GenServer.call(target, {:storeop, {&Riak.ping(&1),[]}})
   end
 
 
   def riak_get_index(target, index) do
-    Riak.Search.Index.get(riak_pid(target), index)
+    GenServer.call(riak_pid(target), {:storeop, {&Riak.Search.Index.get/2, [index]}})
   end
 
   def put_schema(target, schema, schema_xml) do
     if config :op do
       Logger.info "SCHEMA\tCREATE\tCreating Schema: #{schema}"
-      Riak.Search.Schema.create(riak_pid(target), schema, schema_xml)
+      GenServer.call(riak_pid(target), {:storeop, {&Riak.Search.Schema.create/3, [schema, schema_xml]}})
     else
       Logger.info "SCHEMA\tCREATE[NOOP]\tWould have created schema: #{schema}"
     end
@@ -100,14 +125,14 @@ defmodule RiakExtl.Store do
   def riak_index_create(target, idx, schema, props) do
     if config :op do
       Logger.info "INDEX\tCREATE\tCreating Index: #{idx[:index]}"
-      Riak.Search.Index.put(riak_pid(target), idx[:index], schema, props)
+      GenServer.call(riak_pid(target), {:storeop, {&Riak.Search.Index.put/4, [idx[:index], schema, props]}})
     else
       Logger.info "INDEX\tCREATE[NOOP]\tWould have created Index: #{idx[:index]}"
     end
   end
 
   def riak_get_schema( target, schema ) do
-    Riak.Search.Schema.get(riak_pid(target), schema)
+    GenServer.call(riak_pid(target), {:storeop, {&Riak.Search.Schema.get/2, [schema]}})
   end
 
 end

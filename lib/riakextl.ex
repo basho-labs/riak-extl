@@ -35,6 +35,8 @@ defmodule RiakExtl do
       "ping" ->
         Logger.info("Connecting to source")
         start_riak(:src, String.to_atom(config["src_ip"]), config["src_port"])
+        IO.puts("Where is :src:")
+        IO.inspect(Process.whereis(:src))
         Logger.info("Pinging source...")
         Logger.info("Recieved [#{riak_ping(:src)}] from source")
         Logger.info("Connecting to target")
