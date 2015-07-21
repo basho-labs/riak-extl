@@ -345,7 +345,7 @@ defmodule RiakExtl do
   def create_index(nil), do: nil
   def create_index({t, b, idx, schema}) do
     { :ok, props } = get_bucket(:sink, {t,b})
-    case get_index(:sink, idx[:index]) do
+    case riak_get_index(:sink, idx[:index]) do
       {:ok, sink_idx} ->
         cond do
           sink_idx[:schema] === schema ->

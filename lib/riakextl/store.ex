@@ -91,7 +91,7 @@ defmodule RiakExtl.Store do
   def put_schema(target, schema, schema_xml) do
     if config :op do
       Logger.info "SCHEMA\tCREATE\tCreating Schema: #{schema}"
-      Riak.Search.Schema.create(riak_pid(pid), schema, schema_xml)
+      Riak.Search.Schema.create(riak_pid(target), schema, schema_xml)
     else
       Logger.info "SCHEMA\tCREATE[NOOP]\tWould have created schema: #{schema}"
     end
