@@ -1,10 +1,10 @@
 /_build
 /deps
 /dump
-/test/env
 /test/ansible
 erl_crash.dump
 *.ez
 riak-extl
 *.log
 devrel
+/test/env/dev/dev*
