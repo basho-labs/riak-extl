@@ -6,43 +6,91 @@ defmodule RiakExtlTest do
     {:ok, doc: true}
   end
 
-  test "invalid argument: no command" do
-   assert :ok = RiakExtl.main(["--type", "foo"])
-  end
-  test "invalid argument: sync, no type" do
-   assert :ok = RiakExtl.main(["sync","--op","--json"])
-  end
-  test "invalid argument: create_indexes, no type" do
-   assert :ok = RiakExtl.main(["create_indexes","--op"])
-  end
-  test "help" do
-   assert :ok = RiakExtl.main(["help"])
-  end
-  test "ping" do
-    assert :ok = RiakExtl.main(["ping"])
-  end
-  test "sync, no-op, json validation" do
+  # test "invalid argument: no command" do
+  #  assert :ok = RiakExtl.main(["--type", "foo"])
+  # end
+  # test "invalid argument: sync, no type" do
+  #  assert :ok = RiakExtl.main(["sync","--op","--json"])
+  # end
+  # test "invalid argument: create_indexes, no type" do
+  #  assert :ok = RiakExtl.main(["create_indexes","--op"])
+  # end
+  # test "help" do
+  #  assert :ok = RiakExtl.main(["help"])
+  # end
+  # test "ping" do
+  #   assert :ok = RiakExtl.main(["ping"])
+  # end
+  # test "sync, no-op, json validation" do
+  #   assert :ok = RiakExtl.main(["--type", "consistent", "sync","--no-op","--json"])
+  # end
+  # test "sync, no-op, no json validation" do
+  #   assert :ok = RiakExtl.main(["--type", "consistent", "sync","--no-op","--no-json"])
+  # end
+  # test "sync, op, json validation" do
+  #   assert :ok = RiakExtl.main(["--type","consistent","sync","--op","--json"])
+  # end
+  # test "create_indexes, no-op" do
+  #   assert :ok = RiakExtl.main(["--type","search","create_indexes","--no-op"])
+  # end
+  # test "sync_indexes, op" do
+  #   assert :ok = RiakExtl.main(["--type","search","sync_indexes","--op"])
+  # end
+  # test "list_src_buckets" do
+  #   assert :ok = RiakExtl.main(["--type","consistent","list_src_buckets"])
+  # end
+  # test "list_sink_buckets" do
+  #   assert :ok = RiakExtl.main(["--type","consistent","list_sink_buckets"])
+  # end
+  #
+
+  test "sync (consistent), no-op, json validation" do
     assert :ok = RiakExtl.main(["--type", "consistent", "sync","--no-op","--json"])
   end
-  test "sync, no-op, no json validation" do
-    assert :ok = RiakExtl.main(["--type", "consistent", "sync","--no-op","--no-json"])
-  end
-  test "sync, op, json validdation" do
-    assert :ok = RiakExtl.main(["--type","consistent","sync","--op","--json"])
-  end
-  test "create_indexes, no-op" do
-    assert :ok = RiakExtl.main(["--type","search","create_indexes","--no-op"])
-  end
-  test "create_indexes, op" do
-    assert :ok = RiakExtl.main(["--type","search","create_indexes","--op"])
-  end
-  test "list_src_buckets" do
-    assert :ok = RiakExtl.main(["--type","consistent","list_src_buckets"])
-  end
-  test "list_sink_buckets" do
-    assert :ok = RiakExtl.main(["--type","consistent","list_sink_buckets"])
+
+  test "sync_indexes, no-op, json validation" do
+    assert :ok = RiakExtl.main(["--type", "search", "sync_indexes","--no-op","--json"])
   end
 
+  test "sync (search), no-op, json validation" do
+    assert :ok = RiakExtl.main(["--type", "search", "sync","--no-op","--json"])
+  end
+
+  test "sync_to_fs (consistent), op, no json validation" do
+    assert :ok = RiakExtl.main(["--type", "consistent", "sync_to_fs","--op","--no-json"])
+  end
+
+  test "sync_indexes_to_fs, op, no json validation" do
+    assert :ok = RiakExtl.main(["--type", "search", "sync_indexes_to_fs","--op","--no-json"])
+  end
+
+  test "sync_to_fs (search), op, no json validation" do
+    assert :ok = RiakExtl.main(["--type", "search", "sync_to_fs","--op","--no-json"])
+  end
+
+  test "sync_from_fs (consistent), op, no json validation" do
+    assert :ok = RiakExtl.main(["--type", "consistent", "sync_from_fs","--op","--no-json"])
+  end
+
+  test "sync_indexes_from_fs, op, no json validation" do
+    assert :ok = RiakExtl.main(["--type", "search", "sync_indexes_from_fs","--op","--no-json"])
+  end
+
+  test "sync_from_fs (search), op, no json validation" do
+    assert :ok = RiakExtl.main(["--type", "search", "sync_from_fs","--op","--no-json"])
+  end
+
+  test "sync (consistent) 2, no-op, json validation" do
+    assert :ok = RiakExtl.main(["--type", "consistent", "sync","--no-op","--json"])
+  end
+
+  test "sync_indexes 2, no-op, json validation" do
+    assert :ok = RiakExtl.main(["--type", "search", "sync_indexes","--no-op","--json"])
+  end
+
+  test "sync, no-op 2, json validation" do
+    assert :ok = RiakExtl.main(["--type", "search", "sync","--no-op","--json"])
+  end
 
   #
   # test_with_mock "start/register/ping riak", Riak.Connection, [start: fn( _ip, _port ) ->

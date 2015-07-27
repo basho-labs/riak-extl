@@ -7,9 +7,14 @@ defmodule RiakExtl do
   def main(args) do
     init_config
 
+    for n <- [
+      :src_ip, :src_port,
+      :sink_ip, :sink_port,
+      :src_dir, :sink_dir ], do:
+        config(n, Application.get_env(:riakextl, n))
+
     config(:op, false)
     config(:json, false)
-    config(:file, "riak-extl.json")
 
     configure_logger
     start_date = Date.now
@@ -26,61 +31,103 @@ defmodule RiakExtl do
 
   def process([command|_args]) do
 
-    config = load_file(config(:file))
-    Logger.debug("Config loaded")
-    Logger.debug("Source: pb://#{config["src_ip"]}:#{config["src_port"]}")
-    Logger.debug("Target: pb://#{config["sink_ip"]}:#{config["sink_port"]}")
+    Logger.debug("Source: pb://#{config :src_ip}:#{config :src_port}")
+    Logger.debug("Target: pb://#{config :sink_ip}:#{config :sink_port}")
 
     case command do
       "ping" ->
         Logger.info("Connecting to source")
-        start_riak(:src, String.to_atom(config["src_ip"]), config["src_port"])
+        start_riak(:src, String.to_atom(config :src_ip), config :src_port)
         IO.puts("Where is :src:")
         IO.inspect(Process.whereis(:src))
         Logger.info("Pinging source...")
         Logger.info("Recieved [#{riak_ping(:src)}] from source")
         Logger.info("Connecting to target")
-        start_riak(:sink, String.to_atom(config["sink_ip"]), config["sink_port"])
+        start_riak(:sink, String.to_atom(config :sink_ip), config :sink_port)
         Logger.info("Pinging target...")
         Logger.info("Recieved [#{riak_ping(:sink)}] from target")
-      "create_indexes" ->
+      "sync_indexes" ->
         case config(:type) do
           nil ->
-            IO.puts "--type required for dry_run"
+            IO.puts "--type required for #{command}"
             print_help
           _ ->
-            start_riak(:src, String.to_atom(config["src_ip"]), config["src_port"])
-            start_riak(:sink, String.to_atom(config["sink_ip"]), config["sink_port"])
-            Logger.debug("Command create_indexes starting")
+            start_riak(:src, String.to_atom(config :src_ip), config :src_port)
+            start_riak(:sink, String.to_atom(config :sink_ip), config :sink_port)
+            Logger.debug("Command #{command} starting")
+            migrate_type_create_indexes
+        end
+      "sync_indexes_to_fs" ->
+        case config(:type) do
+          nil ->
+            IO.puts "--type required for #{command}"
+            print_help
+          _ ->
+            start_riak(:src, String.to_atom(config :src_ip), config :src_port)
+            start_file(:sink, config :sink_dir)
+            Logger.debug("Command #{command} starting")
+            migrate_type_create_indexes
+        end
+      "sync_indexes_from_fs" ->
+        case config(:type) do
+          nil ->
+            IO.puts "--type required for #{command}"
+            print_help
+          _ ->
+            start_file(:src, config :src_dir)
+            start_riak(:sink, String.to_atom(config :sink_ip), config :sink_port)
+            Logger.debug("Command #{command} starting")
             migrate_type_create_indexes
         end
       "sync" ->
         case config(:type) do
           nil ->
-            IO.puts "--type required for sync"
+            IO.puts "--type required for #{command}"
             print_help
           _ ->
-            start_riak(:src, String.to_atom(config["src_ip"]), config["src_port"])
-            start_riak(:sink, String.to_atom(config["sink_ip"]), config["sink_port"])
-            Logger.debug("Command SYNC starting")
+            start_riak(:src, String.to_atom(config :src_ip), config :src_port)
+            start_riak(:sink, String.to_atom(config :sink_ip), config :sink_port)
+            Logger.debug("Command #{command} starting")
+            migrate_type
+        end
+      "sync_to_fs" ->
+        case config(:type) do
+          nil ->
+            IO.puts "--type required for #{command}"
+            print_help
+          _ ->
+            start_riak(:src, String.to_atom(config :src_ip), config :src_port)
+            start_file(:sink, config :sink_dir)
+            Logger.debug("Command #{command} starting")
+            migrate_type
+        end
+      "sync_from_fs" ->
+        case config(:type) do
+          nil ->
+            IO.puts "--type required for #{command}"
+            print_help
+          _ ->
+            start_file(:src, config :src_dir)
+            start_riak(:sink, String.to_atom(config :sink_ip), config :sink_port)
+            Logger.debug("Command #{command} starting")
             migrate_type
         end
       "list_src_buckets" ->
         case config(:type) do
           nil ->
-            IO.puts "--type required for list_src_buckets"
+            IO.puts "--type required for #{command}"
             print_help()
           _ ->
-            start_riak(:src, String.to_atom(config["src_ip"]), config["src_port"])
+            start_riak(:src, String.to_atom(config :src_ip), config :src_port)
             print_buckets(:src)
         end
       "list_sink_buckets" ->
         case config(:type) do
           nil ->
-            IO.puts "--type required for list_sink_buckets"
+            IO.puts "--type required for #{command}"
             print_help()
           _ ->
-            start_riak(:sink, String.to_atom(config["sink_ip"]), config["sink_port"])
+            start_riak(:sink, String.to_atom(config :sink_ip), config :sink_port)
             print_buckets(:sink)
         end
       "help" ->
@@ -88,13 +135,6 @@ defmodule RiakExtl do
       unknown ->
         Logger.warn "Unimplemented command: #{unknown}"
         print_help()
-    end
-  end
-
-  def load_file(file) do
-    case File.regular?(file) do
-      true -> JSON.decode!(File.read!(file))
-      false -> %{}
     end
   end
 
@@ -131,6 +171,7 @@ defmodule RiakExtl do
     IO.puts "\t\tlist_src_buckets\tList all buckets in <bucket-type> of source cluster."
     IO.puts "\t\tlist_sink_buckets\tList all buckets in <bucket-type> of sink cluster."
     IO.puts "\t\tsync\t\tPerform actual syncronization of buckets types from Source cluster to sink cluster"
+    IO.puts "\t\tsync_to_fs\t\tPerform syncronization of buckets types from Source cluster to sink file system"
     IO.puts "\t\tcreate_indexes\t\tMigrate Schemas, Indexes and Bucket configurations within <bucket-type>."
   end
 
@@ -173,16 +214,24 @@ defmodule RiakExtl do
         true ->
           case has_key do
             true ->
-              sink_o = get_obj!(:sink, type, bucket, key)
-              case needs_update(src_o, sink_o) do
-                true ->
-                  {:put, %{src_o | vclock: sink_o.vclock}}
-                false ->
-                  {:skip, %{src_o | vclock: sink_o.vclock}}
+              case get_obj!(:sink, type, bucket, key) do
+                sink_o when is_map(sink_o) ->
+                  case needs_update(src_o, sink_o) do
+                    true ->
+                      {:put, %{src_o | vclock: sink_o.vclock}}
+                    false ->
+                      {:skip, %{src_o | vclock: sink_o.vclock}}
+                  end
+                {:error, :notfound} ->
+                  Logger.info("#{key} listed, but not found in #{bucket}")
+                  {:put, %{src_o | vclock: nil} }
+                {:error, _ } ->
+                  Logger.warn("unknown error returned getting #{key} in #{bucket}")
+                _ ->
+                  Logger.warn("unknown result getting #{key} from #{bucket} in sink")
               end
             false ->
               {:put, %{src_o | vclock: nil} }
-
           end
         false ->
           case has_key do
@@ -321,24 +370,20 @@ defmodule RiakExtl do
   def create_schema({t, b, idx, schema, schema_xml}) do
     case riak_get_schema(:sink, schema) do
       { :ok, sink_schema } ->
-        if ( cond do
-          sink_schema[:name] !== schema -> false
-          sink_schema[:schema_xml] !== schema_xml -> false
-          true -> true
-        end ) do
+        if Dict.equal?([name: schema, content: schema_xml], sink_schema) do
+          Logger.info "SCHEMA\tSKIP\tSchema already created and matches"
+          {t, b, idx, schema}
+        else
           Logger.warn "SCHEMA\tERROR\tDifferent schema exists for #{schema}"
           Logger.warn "SCHEMA\tERROR\tSkipping Index Creation due to schema error"
           nil
-        else
-          Logger.info "SCHEMA\tSKIP\tSchema already created and matches"
-          {t, b, idx, schema}
         end
       { :error, "notfound" } ->
         put_schema(:sink, schema, schema_xml)
         {t, b, idx, schema}
-      Error ->
+      error ->
         IO.puts "Unhandled response"
-        IO.inspect Error
+        IO.inspect error
         Process.exit(self(),"Unhandled response from destination cluster getting schema")
         nil
     end
@@ -363,9 +408,9 @@ defmodule RiakExtl do
       {:error, "notfound"} ->
         riak_index_create(:sink, idx, schema, [n_val: props[:n_val]])
         {t, b, idx, props}
-      Error ->
+      error ->
         IO.puts "Unhandled response"
-        IO.inspect Error
+        IO.inspect error
         Process.exit(self(),"Unhandled response from destination cluster getting index")
         nil
     end

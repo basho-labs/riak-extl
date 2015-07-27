@@ -1,5 +1,8 @@
 /_build
 /deps
+/dump
+/test/env
+/test/ansible
 erl_crash.dump
 *.ez
 riak-extl
