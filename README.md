@@ -1,22 +1,25 @@
 Riak-Extl
 ========
 
-Synchronization script for client
-
-Client is using strong consistency, so MDC was unavailable.
+Synchronization script
 
 ```
-Usage: ./riak-extl --type <bucket-type> [--config <config.json>] [--no-op|--op] [--no-json|--json] <command>
-         <bucket-type>          The bucket type to sync
-         <config.json>          An alternate config.json file (defaults to riakextl.json).
-         [--no-op|--op]         Disable or enable execution of changing destination clsuter
-         [--no-json|--json]             Disable or enable JSON validation. JSON validation will error instead of writing invalid JSON values.
-         <command>              The command to execute. Could be one of:
-                ping            Test connectivity
-                list_src_buckets        List all buckets in <bucket-type> of source cluster.
-                list_sink_buckets       List all buckets in <bucket-type> of sink cluster.
-                sync            Perform actual synchronization of buckets types from Source cluster to sink cluster
-                create_indexes          Migrate Schemas, Indexes and Bucket configurations within <bucket-type>.
+Usage: ./riak-extl <command> --type <bucket-type> [--op] [--json]
+  <commands> (See COMMANDS section below)
+         ping | sync | sync_to_fs | sync_from_fs
+         sync_indexes | sync_indexes_to_fs | sync_indexes_from_fs
+  --type <bucket-type>  The bucket type to sync
+  [--no-op|--op]        Disable or enable modifications to sink clsuter
+  [--no-json|--json]    Disable or enable JSON validation.
+        JSON validation will error instead of writing invalid JSON values.
+  COMMANDS:
+        ping                    Test connectivity
+        sync                    Synchronize <bucket-type>: SOURCE -> SINK
+        sync_to_fs              Synchronize <bucket-type>: SOURCE -> FS
+        sync_from_fs            Synchronize <bucket-type>: FS -> SINK
+        sync_indexes            Synchronize Schema/Index/Bucket: SOURCE -> SINK
+        sync_indexes_to_fs      Synchronize Schema/Index/Bucket: SOURCE -> FS
+        sync_indexes_from_fs    Synchronize Schema/Index/Bucket: FS -> SINK
 ```
 
 ### Instructions
@@ -42,7 +45,7 @@ Requirements for deployment:
 
 #### Configuring
 
-  Modify riak-extl.json [ or specified file via --config ] for connection parameters
+  Modify ```config/<Mix.env>.exs``` with configuration parameters
 
 #### Running
 

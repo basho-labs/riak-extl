@@ -161,18 +161,22 @@ defmodule RiakExtl do
   end
 
   def print_help() do
-    IO.puts "Usage: ./riak-extl --type <bucket-type> [--config <config.json>] [--no-op|--op] [--no-json|--json] <command>"
-    IO.puts "\t <bucket-type>\t\tThe bucket type to sync"
-    IO.puts "\t <config.json>\t\tAn alternate config.json file (defaults to riak-extl.json)."
-    IO.puts "\t [--no-op|--op]\t\tDisable or enable execution of changing sink clsuter"
-    IO.puts "\t [--no-json|--json]\t\tDisable or enable JSON validation. JSON validation will error instead of writing invalid JSON values."
-    IO.puts "\t <command>\t\tThe command to execute. Could be one of:"
-    IO.puts "\t\tping\t\tTest connectivity"
-    IO.puts "\t\tlist_src_buckets\tList all buckets in <bucket-type> of source cluster."
-    IO.puts "\t\tlist_sink_buckets\tList all buckets in <bucket-type> of sink cluster."
-    IO.puts "\t\tsync\t\tPerform actual syncronization of buckets types from Source cluster to sink cluster"
-    IO.puts "\t\tsync_to_fs\t\tPerform syncronization of buckets types from Source cluster to sink file system"
-    IO.puts "\t\tcreate_indexes\t\tMigrate Schemas, Indexes and Bucket configurations within <bucket-type>."
+    IO.puts "Usage: ./riak-extl <command> --type <bucket-type> [--op] [--json]"
+    IO.puts "  <commands> (See COMMANDS section below)"
+    IO.puts "\t ping | sync | sync_to_fs | sync_from_fs"
+    IO.puts "\t sync_indexes | sync_indexes_to_fs | sync_indexes_from_fs"
+    IO.puts "  --type <bucket-type>\tThe bucket type to sync"
+    IO.puts "  [--no-op|--op]\tDisable or enable modifications to sink clsuter"
+    IO.puts "  [--no-json|--json]\tDisable or enable JSON validation."
+    IO.puts "\tJSON validation will error instead of writing invalid JSON values."
+    IO.puts "  COMMANDS:"
+    IO.puts "\tping\t\t\tTest connectivity"
+    IO.puts "\tsync\t\t\tSynchronize <bucket-type>: SOURCE -> SINK"
+    IO.puts "\tsync_to_fs\t\tSynchronize <bucket-type>: SOURCE -> FS"
+    IO.puts "\tsync_from_fs\t\tSynchronize <bucket-type>: FS -> SINK"
+    IO.puts "\tsync_indexes\t\tSynchronize Schema/Index/Bucket: SOURCE -> SINK"
+    IO.puts "\tsync_indexes_to_fs\tSynchronize Schema/Index/Bucket: SOURCE -> FS"
+    IO.puts "\tsync_indexes_from_fs\tSynchronize Schema/Index/Bucket: FS -> SINK"
   end
 
 ####################
