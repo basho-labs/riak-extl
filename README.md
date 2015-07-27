@@ -38,10 +38,12 @@ Requirements for deployment:
 
 #### Building
 
+  ```
   git clone https://github.com/basho-labs/riak-extl
   mix deps.get
   mix
   mix escript.build
+  ```
 
 #### Configuring
 
