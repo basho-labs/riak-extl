@@ -13,4 +13,11 @@ defmodule RiakExtl.Config do
     Agent.get(Process.whereis(:config), fn map -> Map.get map, attr end)
   end
 
+  def config_new(attr, val) do
+     Agent.update(Process.whereis(:config), fn map -> Map.put_new map, attr, val end)
+  end
+
+  def get_config do
+    Agent.get(Process.whereis(:config), fn map -> map end)
+  end
 end

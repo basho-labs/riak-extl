@@ -8,4 +8,4 @@ use Mix.Config
 # if you want to provide default values for your application for third-
 # party users, it should be done in your mix.exs file.
 
-import_config "#{Mix.env}.exs"
+# import_config "#{Mix.env}.exs"

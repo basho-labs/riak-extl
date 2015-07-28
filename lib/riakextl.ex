@@ -7,14 +7,9 @@ defmodule RiakExtl do
   def main(args) do
     init_config
 
-    for n <- [
-      :src_ip, :src_port,
-      :sink_ip, :sink_port,
-      :src_dir, :sink_dir ], do:
-        config(n, Application.get_env(:riakextl, n))
-
     config(:op, false)
     config(:json, false)
+    config(:config, "riak-extl.conf")
 
     configure_logger
     start_date = Date.now
@@ -24,12 +19,8 @@ defmodule RiakExtl do
     Logger.info("Seconds taken: #{Date.diff(start_date,end_date, :secs)}")
   end
 
-  defp process({[],_}) do
-    IO.puts "No commands given"
-    print_help
-  end
-
-  defp process([command|_args]) do
+  defp process(command) do
+    load_config
 
     Logger.debug("Source: pb://#{config :src_ip}:#{config :src_port}")
     Logger.debug("Target: pb://#{config :sink_ip}:#{config :sink_port}")
@@ -37,13 +28,13 @@ defmodule RiakExtl do
     case command do
       "ping" ->
         Logger.info("Connecting to source")
-        start_riak(:src, String.to_atom(config :src_ip), config :src_port)
+        start_riak(:src, config(:src_ip), config(:src_port))
         IO.puts("Where is :src:")
         IO.inspect(Process.whereis(:src))
         Logger.info("Pinging source...")
         Logger.info("Recieved [#{riak_ping(:src)}] from source")
         Logger.info("Connecting to target")
-        start_riak(:sink, String.to_atom(config :sink_ip), config :sink_port)
+        start_riak(:sink, config(:sink_ip), config(:sink_port))
         Logger.info("Pinging target...")
         Logger.info("Recieved [#{riak_ping(:sink)}] from target")
       "sync_indexes" ->
@@ -52,8 +43,8 @@ defmodule RiakExtl do
             IO.puts "--type required for #{command}"
             print_help
           _ ->
-            start_riak(:src, String.to_atom(config :src_ip), config :src_port)
-            start_riak(:sink, String.to_atom(config :sink_ip), config :sink_port)
+            start_riak(:src, config(:src_ip), config(:src_port))
+            start_riak(:sink, config(:sink_ip), config(:sink_port))
             Logger.debug("Command #{command} starting")
             migrate_type_create_indexes
         end
@@ -63,7 +54,7 @@ defmodule RiakExtl do
             IO.puts "--type required for #{command}"
             print_help
           _ ->
-            start_riak(:src, String.to_atom(config :src_ip), config :src_port)
+            start_riak(:src, config(:src_ip), config(:src_port))
             start_file(:sink, config :sink_dir)
             Logger.debug("Command #{command} starting")
             migrate_type_create_indexes
@@ -75,7 +66,7 @@ defmodule RiakExtl do
             print_help
           _ ->
             start_file(:src, config :src_dir)
-            start_riak(:sink, String.to_atom(config :sink_ip), config :sink_port)
+            start_riak(:sink, config(:sink_ip), config(:sink_port))
             Logger.debug("Command #{command} starting")
             migrate_type_create_indexes
         end
@@ -85,8 +76,8 @@ defmodule RiakExtl do
             IO.puts "--type required for #{command}"
             print_help
           _ ->
-            start_riak(:src, String.to_atom(config :src_ip), config :src_port)
-            start_riak(:sink, String.to_atom(config :sink_ip), config :sink_port)
+            start_riak(:src, config(:src_ip), config(:src_port))
+            start_riak(:sink, config(:sink_ip), config(:sink_port))
             Logger.debug("Command #{command} starting")
             migrate_type
         end
@@ -96,7 +87,7 @@ defmodule RiakExtl do
             IO.puts "--type required for #{command}"
             print_help
           _ ->
-            start_riak(:src, String.to_atom(config :src_ip), config :src_port)
+            start_riak(:src, config(:src_ip), config(:src_port))
             start_file(:sink, config :sink_dir)
             Logger.debug("Command #{command} starting")
             migrate_type
@@ -108,12 +99,14 @@ defmodule RiakExtl do
             print_help
           _ ->
             start_file(:src, config :src_dir)
-            start_riak(:sink, String.to_atom(config :sink_ip), config :sink_port)
+            start_riak(:sink, config(:sink_ip), config(:sink_port))
             Logger.debug("Command #{command} starting")
             migrate_type
         end
       "help" ->
         print_help()
+      "showcfg" ->
+        IO.inspect(get_config)
       unknown ->
         Logger.warn "Unimplemented command: #{unknown}"
         print_help()
@@ -123,15 +116,15 @@ defmodule RiakExtl do
   defp parse_args(args) do
     OptionParser.parse( args,
       strict: [type: :string, op: :boolean, json: :boolean],
-      switches: [config: :string]
+      switches: [config: :string, op: :boolean, json: :boolean]
     )
   end
 
   defp set_config({_options, [], _errors}) do
     ["help"]
   end
-  defp set_config({options, command, []}) do
-    Enum.each([:op, :json, :type], fn attr ->
+  defp set_config({options, [command], []}) do
+    Enum.each([:op, :json, :type, :config], fn attr ->
       if Dict.has_key?(options, attr) do
         config(attr, options[attr])
       end
@@ -139,12 +132,32 @@ defmodule RiakExtl do
     command
   end
   defp set_config({_options,_command,_errors}) do
+    Logger.warn "Invalid command line options"
     ["help"]
   end
 
+  defp load_config do
+    data = File.read!(config :config)
+    String.split(data, "\n")
+    |> Enum.filter(&String.contains?(&1, "="))
+    |> Enum.each(
+      fn line ->
+        [key, value] = String.split(line, "=")
+        key = String.strip(key) |> String.to_atom
+        value = case key do
+          :src_port -> value |> String.strip |> String.to_integer
+          :sink_port -> value |> String.strip |> String.to_integer
+          :src_ip -> value |> String.strip |> String.to_atom
+          :sink_ip -> value |> String.strip |> String.to_atom
+          _ -> value |> String.strip
+        end
+        config_new key, value
+      end)
+  end
+
   defp print_help() do
-    IO.puts "Usage: ./riak-extl <command> --type <bucket-type> [--op] [--json]"
-    IO.puts "  <commands> (See COMMANDS section below)"
+    IO.puts "Usage: ./riak-extl --type <bucket-type> [--op] [--json] <command>"
+    IO.puts "  <command> (See COMMANDS section below)"
     IO.puts "\t ping | sync | sync_to_fs | sync_from_fs"
     IO.puts "\t sync_indexes | sync_indexes_to_fs | sync_indexes_from_fs"
     IO.puts "  --type <bucket-type>\tThe bucket type to sync"
