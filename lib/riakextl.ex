@@ -24,12 +24,12 @@ defmodule RiakExtl do
     Logger.info("Seconds taken: #{Date.diff(start_date,end_date, :secs)}")
   end
 
-  def process({[],_}) do
+  defp process({[],_}) do
     IO.puts "No commands given"
     print_help
   end
 
-  def process([command|_args]) do
+  defp process([command|_args]) do
 
     Logger.debug("Source: pb://#{config :src_ip}:#{config :src_port}")
     Logger.debug("Target: pb://#{config :sink_ip}:#{config :sink_port}")
@@ -112,24 +112,6 @@ defmodule RiakExtl do
             Logger.debug("Command #{command} starting")
             migrate_type
         end
-      "list_src_buckets" ->
-        case config(:type) do
-          nil ->
-            IO.puts "--type required for #{command}"
-            print_help()
-          _ ->
-            start_riak(:src, String.to_atom(config :src_ip), config :src_port)
-            print_buckets(:src)
-        end
-      "list_sink_buckets" ->
-        case config(:type) do
-          nil ->
-            IO.puts "--type required for #{command}"
-            print_help()
-          _ ->
-            start_riak(:sink, String.to_atom(config :sink_ip), config :sink_port)
-            print_buckets(:sink)
-        end
       "help" ->
         print_help()
       unknown ->
@@ -138,17 +120,17 @@ defmodule RiakExtl do
     end
   end
 
-  def parse_args(args) do
+  defp parse_args(args) do
     OptionParser.parse( args,
       strict: [type: :string, op: :boolean, json: :boolean],
       switches: [config: :string]
     )
   end
 
-  def set_config({_options, [], _errors}) do
+  defp set_config({_options, [], _errors}) do
     ["help"]
   end
-  def set_config({options, command, []}) do
+  defp set_config({options, command, []}) do
     Enum.each([:op, :json, :type], fn attr ->
       if Dict.has_key?(options, attr) do
         config(attr, options[attr])
@@ -156,11 +138,11 @@ defmodule RiakExtl do
     end)
     command
   end
-  def set_config({_options,_command,_errors}) do
+  defp set_config({_options,_command,_errors}) do
     ["help"]
   end
 
-  def print_help() do
+  defp print_help() do
     IO.puts "Usage: ./riak-extl <command> --type <bucket-type> [--op] [--json]"
     IO.puts "  <commands> (See COMMANDS section below)"
     IO.puts "\t ping | sync | sync_to_fs | sync_from_fs"
@@ -182,7 +164,7 @@ defmodule RiakExtl do
 ####################
 # Migrate Type Functions
 
-  def migrate_type do
+  defp migrate_type do
     Logger.debug "Retrieving bucket list from source"
     src_buckets = get_buckets!(:src, config :type)
     Logger.debug "Retrieving bucket list from destination"
@@ -193,7 +175,7 @@ defmodule RiakExtl do
     end)
   end
 
-  def migrate_bucket(type, bucket, check_keys) do
+  defp migrate_bucket(type, bucket, check_keys) do
     bucket_start = Date.now
     Logger.info "Migrating #{type}/#{bucket}"
     src_keys = get_keys!(:src, type, bucket)
@@ -211,7 +193,7 @@ defmodule RiakExtl do
     Logger.info("Bucket sync in: #{Date.diff(bucket_start,bucket_end, :secs)} secs")
   end
 
-  def migrate_key(type, bucket, key, has_key) do
+  defp migrate_key(type, bucket, key, has_key) do
     src_o = get_obj!(:src, type, bucket, key)
     try do
       { action, obj } = case is_map(src_o) do
@@ -266,7 +248,7 @@ defmodule RiakExtl do
     end
   end
 
-  def needs_update(src, sink) do
+  defp needs_update(src, sink) do
     cond do
       is_nil(src) and is_nil(sink) ->
         false
@@ -286,7 +268,7 @@ defmodule RiakExtl do
 ######################
 # Migrate Search functions
 
-  def migrate_type_create_indexes do
+  defp migrate_type_create_indexes do
     Logger.debug "Retrieving bucket list from source"
     src_buckets = get_buckets!(:src, config :type)
     Logger.debug "Retrieving bucket list from destination"
@@ -299,8 +281,8 @@ defmodule RiakExtl do
 
   end
 
-  def bucket_configure(nil), do: nil
-  def bucket_configure({t,b,p}) do
+  defp bucket_configure(nil), do: nil
+  defp bucket_configure({t,b,p}) do
     if config :op do
       case put_bucket(:sink, {t,b}, p) do
         :ok -> Logger.info "BUCKET\tSUCCESS\tApplied configuration to #{b}"
@@ -314,7 +296,7 @@ defmodule RiakExtl do
     end
   end
 
-  def migrate_bucket_create_indexes(type, bucket) do
+  defp migrate_bucket_create_indexes(type, bucket) do
     bucket_start = Date.now
     Logger.debug "Migrating Search for #{type}/#{bucket}"
 
@@ -348,30 +330,30 @@ defmodule RiakExtl do
 
   end
 
-  def get_props!(t,b) do
+  defp get_props!(t,b) do
     { :ok, props } = get_bucket(:src, {t,b})
     { t, b, props }
   end
 
-  def get_idx_name({t, b, props}), do: {t, b, props[:search_index]}
+  defp get_idx_name({t, b, props}), do: {t, b, props[:search_index]}
 
-  def get_index({_t, _b, nil}),  do: nil
-  def get_index({t, b, idx_name}) do
+  defp get_index({_t, _b, nil}),  do: nil
+  defp get_index({t, b, idx_name}) do
     { :ok, idx } = riak_get_index(:src, idx_name)
     {t, b, idx, idx[:schema] }
   end
 
-  def get_schema(nil), do: nil
-  def get_schema({_t, _b, _idx, nil}), do: nil
-  def get_schema({t, b, idx, schema}) do
+  defp get_schema(nil), do: nil
+  defp get_schema({_t, _b, _idx, nil}), do: nil
+  defp get_schema({t, b, idx, schema}) do
     { :ok, [name: schema, content: schema_xml] }
       = riak_get_schema(:src, schema)
     {t, b, idx, schema, schema_xml}
   end
 
-  def create_schema(nil), do: nil
-  def create_schema({_t, _b, _idx, _schema, nil}), do: nil
-  def create_schema({t, b, idx, schema, schema_xml}) do
+  defp create_schema(nil), do: nil
+  defp create_schema({_t, _b, _idx, _schema, nil}), do: nil
+  defp create_schema({t, b, idx, schema, schema_xml}) do
     case riak_get_schema(:sink, schema) do
       { :ok, sink_schema } ->
         if Dict.equal?([name: schema, content: schema_xml], sink_schema) do
@@ -393,8 +375,8 @@ defmodule RiakExtl do
     end
   end
 
-  def create_index(nil), do: nil
-  def create_index({t, b, idx, schema}) do
+  defp create_index(nil), do: nil
+  defp create_index({t, b, idx, schema}) do
     { :ok, props } = get_bucket(:sink, {t,b})
     case riak_get_index(:sink, idx[:index]) do
       {:ok, sink_idx} ->
@@ -420,8 +402,8 @@ defmodule RiakExtl do
     end
   end
 
-  def queue_configure_bucket(nil), do: nil
-  def queue_configure_bucket({_t, _b, idx, props}) do
+  defp queue_configure_bucket(nil), do: nil
+  defp queue_configure_bucket({_t, _b, idx, props}) do
     cond do
       !Keyword.has_key?(props, :search_index) ->
         Logger.info "BUCKET\tQUEUE\tQueueing bucket configuration"
@@ -436,12 +418,7 @@ defmodule RiakExtl do
     end
   end
 
-  def print_buckets(target) when is_atom(target) do
-    buckets = get_buckets!(target, config :type )
-    Enum.each(buckets, fn(b) -> Logger.info "Bucket: #{b}" end)
-  end
-
-  def configure_logger do
+  defp configure_logger do
     timestamp = Date.now |> DateFormat.format!("%Y%m%d-%H%M%S", :strftime)
     Logger.add_backend {LoggerFileBackend, :file}
   	Logger.configure_backend {LoggerFileBackend, :file},
