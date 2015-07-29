@@ -3,6 +3,8 @@ defmodule RiakExtl do
   use Timex
   import RiakExtl.Store
   import RiakExtl.Config
+  import RiakExtl.Util
+
 
   def main(args) do
     init_config
@@ -47,6 +49,8 @@ defmodule RiakExtl do
             start_riak(:sink, config(:sink_ip), config(:sink_port))
             Logger.debug("Command #{command} starting")
             migrate_type_create_indexes
+            stop(:src)
+            stop(:sink)
         end
       "sync_indexes_to_fs" ->
         case config(:type) do
@@ -58,6 +62,8 @@ defmodule RiakExtl do
             start_file(:sink, config :sink_dir)
             Logger.debug("Command #{command} starting")
             migrate_type_create_indexes
+            stop(:src)
+            stop(:sink)
         end
       "sync_indexes_from_fs" ->
         case config(:type) do
@@ -69,6 +75,8 @@ defmodule RiakExtl do
             start_riak(:sink, config(:sink_ip), config(:sink_port))
             Logger.debug("Command #{command} starting")
             migrate_type_create_indexes
+            stop(:src)
+            stop(:sink)
         end
       "sync" ->
         case config(:type) do
@@ -80,6 +88,8 @@ defmodule RiakExtl do
             start_riak(:sink, config(:sink_ip), config(:sink_port))
             Logger.debug("Command #{command} starting")
             migrate_type
+            stop(:src)
+            stop(:sink)
         end
       "sync_to_fs" ->
         case config(:type) do
@@ -91,6 +101,8 @@ defmodule RiakExtl do
             start_file(:sink, config :sink_dir)
             Logger.debug("Command #{command} starting")
             migrate_type
+            stop(:src)
+            stop(:sink)
         end
       "sync_from_fs" ->
         case config(:type) do
@@ -102,6 +114,8 @@ defmodule RiakExtl do
             start_riak(:sink, config(:sink_ip), config(:sink_port))
             Logger.debug("Command #{command} starting")
             migrate_type
+            stop(:src)
+            stop(:sink)
         end
       "help" ->
         print_help()
@@ -137,22 +151,29 @@ defmodule RiakExtl do
   end
 
   defp load_config do
-    data = File.read!(config :config)
-    String.split(data, "\n")
-    |> Enum.filter(&String.contains?(&1, "="))
-    |> Enum.each(
-      fn line ->
-        [key, value] = String.split(line, "=")
-        key = String.strip(key) |> String.to_atom
-        value = case key do
-          :src_port -> value |> String.strip |> String.to_integer
-          :sink_port -> value |> String.strip |> String.to_integer
-          :src_ip -> value |> String.strip |> String.to_atom
-          :sink_ip -> value |> String.strip |> String.to_atom
-          _ -> value |> String.strip
-        end
-        config_new key, value
-      end)
+    case File.read(config :config) do
+    {:ok, data} ->
+      String.split(data, "\n")
+      |> Enum.filter(&String.contains?(&1, "="))
+      |> Enum.each(
+        fn line ->
+          [key, value] = String.split(line, "=")
+          key = String.strip(key) |> String.to_atom
+          value = case key do
+            :src_port -> value |> String.strip |> String.to_integer
+            :sink_port -> value |> String.strip |> String.to_integer
+            :src_ip -> value |> String.strip |> String.to_atom
+            :sink_ip -> value |> String.strip |> String.to_atom
+            _ -> value |> String.strip
+          end
+          config_new key, value
+        end)
+      {:error, error} ->
+        Logger.warn("Error loading configuration file [#{config :config}]")
+        Logger.warn("Please use riak-extl.conf-example as example to specify connection information")
+        Logger.warn("Error: #{to_str(error)}")
+        Process.exit(self(), "Config file error")
+      end
   end
 
   defp print_help() do
@@ -172,6 +193,7 @@ defmodule RiakExtl do
     IO.puts "\tsync_indexes\t\tSynchronize Schema/Index/Bucket: SOURCE -> SINK"
     IO.puts "\tsync_indexes_to_fs\tSynchronize Schema/Index/Bucket: SOURCE -> FS"
     IO.puts "\tsync_indexes_from_fs\tSynchronize Schema/Index/Bucket: FS -> SINK"
+    IO.puts "\tshowcfg\t\t\tDisplay loaded configuration options"
   end
 
 ####################

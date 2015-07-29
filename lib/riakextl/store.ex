@@ -3,6 +3,7 @@ defmodule RiakExtl.Store do
 
   require Logger
   import RiakExtl.Config
+  import RiakExtl.Util
 
   def init({:riak, target, {ip, port}}) do
     Process.register(self(), target)
@@ -58,6 +59,12 @@ defmodule RiakExtl.Store do
     IO.puts("Unknown call!")
     IO.inputs(unknown)
     {:reply, :ok, state}
+  end
+
+  def stop( target ) when is_atom(target) do
+    GenServer.call(riak_pid(target), {:storeop, {Riak.Connection, :stop,[]}})
+    Logger.debug "Stopping Store Sever [#{to_str(target)}]"
+    
   end
 
   def get_obj!( target, type, bucket, key ) when is_atom(target) do

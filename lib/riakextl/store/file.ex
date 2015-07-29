@@ -1,7 +1,7 @@
 defmodule RiakExtl.Store.File do
   use GenServer
   require Logger
-  #import RiakExtl.Config
+  import RiakExtl.Util
 
   def init({dir}) do
     state = HashDict.new()
@@ -9,9 +9,11 @@ defmodule RiakExtl.Store.File do
     {:ok, state}
   end
 
-  # def terminate(reason, state) do
-  #
-  # end
+  def terminate(reason, _state) do
+    Logger.warn("#{__MODULE__} closing with reason: #{to_str(reason)}")
+    close_dets
+    :ok
+  end
 
   def run(pid, mod, fun, args) do
     GenServer.call(pid, {mod, fun, args})
@@ -109,6 +111,12 @@ defmodule RiakExtl.Store.File do
     {:reply, reply, state}
   end
 
+  def handle_call({Riak.Connection, :stop, []}, _from, state) do
+    #terminate("Riak.Connection.stop/1", state)
+    close_dets
+    {:reply, :ok, state}
+  end
+
   def handle_call({unknown, _args}, _from, state) do
     Logger.warn("Unimplemented File API called: #{unknown}")
     {:reply, {:error, "Unhandled API Call"}, state}
@@ -165,21 +173,28 @@ defmodule RiakExtl.Store.File do
 
   def bucket_ref_from_file(filename, type, state) do
     base = HashDict.fetch!(state, {:state, :base})
-    {:ok, ref} = :dets.open_file("#{base}/#{type}/#{filename}",[])
-    meta = case :dets.lookup(ref,{:meta, :name}) do
-      [{{:meta, :name}, meta}] -> meta
-      [{{:meta, :name}, meta}|_tail] ->
-        Logger.warn("Multiple meta entries for #{filename} found")
-        meta
-      _unknown ->
-        raise "Unknown bucket #{filename}, no metadata found"
-    end
-    case :erlang.binary_to_term(meta) do
-      {type, bucket} ->
-        state = HashDict.put(state,{:bucket, {type, bucket}},ref)
-        {{type, bucket}, state}
-      _unknown ->
-        raise "Unable to load #{filename}"
+    case :dets.open_file("#{base}/#{type}/#{filename}",[repair: false]) do
+      {:ok, ref} ->
+      meta = case :dets.lookup(ref,{:meta, :name}) do
+        [{{:meta, :name}, meta}] -> meta
+        [{{:meta, :name}, meta}|_tail] ->
+          Logger.warn("Multiple meta entries for #{filename} found")
+          meta
+        _unknown ->
+          raise "Unknown bucket #{filename}, no metadata found"
+      end
+      case :erlang.binary_to_term(meta) do
+        {type, bucket} ->
+          state = HashDict.put(state,{:bucket, {type, bucket}},ref)
+          {{type, bucket}, state}
+        _unknown ->
+          raise "Unable to load #{filename}"
+      end
+      {:error, {:needs_repair, filename}} ->
+        Logger.warn("file #{filename} not closed properly and needs repair")
+      unknown ->
+        IO.inspect(unknown)
+        raise "Unable to open #{filename}"
     end
   end
 
@@ -188,7 +203,7 @@ defmodule RiakExtl.Store.File do
     dir = "#{base}/#{type}"
     :ok = File.mkdir_p!(dir)
     filename = :crypto.hash(:sha, bucket) |> Base.url_encode64
-    {:ok, ref} = :dets.open_file("#{dir}/#{filename}.bucket",[])
+    {:ok, ref} = :dets.open_file("#{dir}/#{filename}.bucket",[repair: false])
 
     case :dets.insert_new(
       ref,
@@ -207,7 +222,7 @@ defmodule RiakExtl.Store.File do
     base = HashDict.fetch!(state, {:state, :base})
     dir = "#{base}"
     :ok = File.mkdir_p!(dir)
-    {:ok, ref} = :dets.open_file("#{dir}/meta.search",[])
+    {:ok, ref} = :dets.open_file("#{dir}/search.indexes",[])
     state = HashDict.put(state, {:meta, :search}, ref)
     {:ok, state}
   end
@@ -241,6 +256,13 @@ defmodule RiakExtl.Store.File do
         Logger.info("unknown result for #{type}:#{id} returned")
     end
     {result, state}
+  end
+
+  def close_dets do
+    for dets <- :dets.all do
+      Logger.debug("Closing #{dets}")
+      :dets.close(dets)
+    end
   end
 
 end
