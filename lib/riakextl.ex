@@ -22,13 +22,12 @@ defmodule RiakExtl do
   end
 
   defp process(command) do
-    load_config
-
     Logger.debug("Source: pb://#{config :src_ip}:#{config :src_port}")
     Logger.debug("Target: pb://#{config :sink_ip}:#{config :sink_port}")
 
     case command do
       "ping" ->
+        load_config
         Logger.info("Connecting to source")
         start_riak(:src, config(:src_ip), config(:src_port))
         IO.puts("Where is :src:")
@@ -40,6 +39,7 @@ defmodule RiakExtl do
         Logger.info("Pinging target...")
         Logger.info("Recieved [#{riak_ping(:sink)}] from target")
       "sync_indexes" ->
+        load_config
         case config(:type) do
           nil ->
             IO.puts "--type required for #{command}"
@@ -53,6 +53,7 @@ defmodule RiakExtl do
             stop(:sink)
         end
       "sync_indexes_to_fs" ->
+        load_config
         case config(:type) do
           nil ->
             IO.puts "--type required for #{command}"
@@ -66,6 +67,7 @@ defmodule RiakExtl do
             stop(:sink)
         end
       "sync_indexes_from_fs" ->
+        load_config
         case config(:type) do
           nil ->
             IO.puts "--type required for #{command}"
@@ -79,6 +81,7 @@ defmodule RiakExtl do
             stop(:sink)
         end
       "sync" ->
+        load_config
         case config(:type) do
           nil ->
             IO.puts "--type required for #{command}"
@@ -92,6 +95,7 @@ defmodule RiakExtl do
             stop(:sink)
         end
       "sync_to_fs" ->
+        load_config
         case config(:type) do
           nil ->
             IO.puts "--type required for #{command}"
@@ -105,6 +109,7 @@ defmodule RiakExtl do
             stop(:sink)
         end
       "sync_from_fs" ->
+        load_config
         case config(:type) do
           nil ->
             IO.puts "--type required for #{command}"
@@ -120,6 +125,7 @@ defmodule RiakExtl do
       "help" ->
         print_help()
       "showcfg" ->
+        load_config
         IO.inspect(get_config)
       unknown ->
         Logger.warn "Unimplemented command: #{unknown}"
