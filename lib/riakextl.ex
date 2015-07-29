@@ -5,17 +5,8 @@ defmodule RiakExtl do
   import RiakExtl.Config
 
   def main(args) do
-    init_config
-
-    for n <- [
-      :src_ip, :src_port,
-      :sink_ip, :sink_port,
-      :src_dir, :sink_dir ], do:
-        config(n, Application.get_env(:riakextl, n))
-
     config(:op, false)
     config(:json, false)
-
     configure_logger
     start_date = Date.now
     Logger.debug("Arguments recieved: #{args}")
@@ -149,11 +140,18 @@ defmodule RiakExtl do
     ["help"]
   end
   def set_config({options, command, []}) do
+
+    if Dict.has_key?(options, :config) do
+      path = options[:config]
+      merge_ini(path)
+    end
+
     Enum.each([:op, :json, :type], fn attr ->
       if Dict.has_key?(options, attr) do
         config(attr, options[attr])
       end
     end)
+
     command
   end
   def set_config({_options,_command,_errors}) do
@@ -168,6 +166,7 @@ defmodule RiakExtl do
     IO.puts "  --type <bucket-type>\tThe bucket type to sync"
     IO.puts "  [--no-op|--op]\tDisable or enable modifications to sink clsuter"
     IO.puts "  [--no-json|--json]\tDisable or enable JSON validation."
+    IO.puts "  [--config <config.ini>]\tSet application configuration."
     IO.puts "\tJSON validation will error instead of writing invalid JSON values."
     IO.puts "  COMMANDS:"
     IO.puts "\tping\t\t\tTest connectivity"
