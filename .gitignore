@@ -5,6 +5,7 @@
 erl_crash.dump
 *.ez
 riak-extl
+riak-extl.conf
 *.log
 devrel
 /test/env/dev/dev*

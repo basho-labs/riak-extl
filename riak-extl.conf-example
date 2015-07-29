@@ -1,0 +1,11 @@
+## Source Cluster Connection
+src_ip = 127.0.0.1
+src_port = 10037
+
+## Sink Cluster Connection
+sink_ip = 127.0.0.1
+sink_port = 10047
+
+# File System Locations
+src_dir = ./dump/source
+sink_dir = ./dump/sink
