@@ -9,3 +9,4 @@ riak-extl.conf
 *.log
 devrel
 /test/env/dev/dev*
+/test/.vagrant

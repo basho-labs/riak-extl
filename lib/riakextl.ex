@@ -188,7 +188,7 @@ defmodule RiakExtl do
     IO.puts "\t ping | sync | sync_to_fs | sync_from_fs"
     IO.puts "\t sync_indexes | sync_indexes_to_fs | sync_indexes_from_fs"
     IO.puts "  --type <bucket-type>\tThe bucket type to sync"
-    IO.puts "  [--no-op|--op]\tDisable or enable modifications to sink clsuter"
+    IO.puts "  [--no-op|--op]\tDisable or enable modifications to sink cluster"
     IO.puts "  [--no-json|--json]\tDisable or enable JSON validation."
     IO.puts "\tJSON validation will error instead of writing invalid JSON values."
     IO.puts "  COMMANDS:"
